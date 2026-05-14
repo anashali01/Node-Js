@@ -4,6 +4,8 @@ import { db } from "./config/db.js";
 import { User } from "./models/user.modal.js";
 import bodyParser from "body-parser";
 
+let viewData = [];
+
 dotenv.config();
 
 const app = express();
@@ -20,8 +22,16 @@ app.get('/', (req, res) => {
 })
 
 //! Tables Page Render Route 
-app.get('/tables', (req, res) => {
-    return res.render('pages/tables');
+app.get('/tables', async(req, res) => {
+    try {
+        let data = await User.find({})
+
+        return res.render('pages/tables' , {
+            users : data
+        });
+    } catch (error) {
+        
+    }
 })
 
 //! Form basic Page Render Route 
@@ -34,6 +44,55 @@ app.get('/login', (req, res) => {
     return res.render('pages/login');
 })
 
+//! Login Page Data Transfer Route
+app.post('/login', async (req, res) => {
+    try {
+        let rs = await fetch('http://127.0.0.1:6100/user/login', {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify(req.body),
+        })
+
+        let data = await rs.json();
+
+        if(data.success){
+            return res.redirect('/');
+        }else{
+            return res.redirect(req.get('referrer' || "/"))
+        }
+    } catch (error) {
+        console.log(error.message);
+        return res.json(req.get('referrer' || "/"))
+    }
+})
+
+//! Login Page API Route
+app.post('/user/login', async (req, res) => {
+    try {
+        const { email, password } = req.body;
+        let user = await User.findOne({ email });
+
+        if (user) {
+            if (user.password == password) {
+                return res.json({
+                    message: "User Found Successfully !",
+                    success: true,
+                    data: user,
+                })
+            } else {
+                return res.json({ message: "Password Doesn't Match!", success: false });
+            }
+        } else {
+            return res.json({ message: "User Not Found!!", success: false });
+        }
+    } catch (error) {
+        return res.json({ message: error.message, success: false });
+    }
+
+
+})
 //! Signup Page Render Route 
 app.get('/signup', (req, res) => {
     return res.render('pages/signup');
